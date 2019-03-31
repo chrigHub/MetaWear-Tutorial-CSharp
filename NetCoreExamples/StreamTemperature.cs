@@ -3,6 +3,7 @@ using MbientLab.MetaWear.Core;
 using MbientLab.MetaWear.Sensor;
 using MbientLab.MetaWear.Sensor.Temperature;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace NetCoreExamples {
@@ -11,12 +12,14 @@ namespace NetCoreExamples {
             var temperature = metawear.GetModule<ITemperature>();
             var thermistor = temperature.FindSensors(SensorType.PresetThermistor)[0];
 
+            
             await thermistor.AddRouteAsync(source => source.Stream(_ => {
                 Console.WriteLine($"{_.FormattedTimestamp} -> {_.Value<float>()}");
+                
             }));
             // Temperature is classified as a forced data producer  
             // Schedule periodic `Read` calls in the firmware, do it after route is setup
-            return await metawear.ScheduleAsync(1000, false, () => thermistor.Read());
+            return await metawear.ScheduleAsync(100, false, () => thermistor.Read());
         }
 
         static async Task RunAsync(string[] args) {
