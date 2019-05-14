@@ -31,7 +31,7 @@ namespace NetCoreExamples
                 AngularVelocity gyroData = data.Value<AngularVelocity>();
                 mergedata.gyUpdate(gyroData);
                 //Console.Clear();
-                Console.WriteLine(mergedata.toString());
+                Console.WriteLine(mergedata.ToString());
             }));
 
             await acc.Acceleration.AddRouteAsync(source => source.Stream(data =>
@@ -39,7 +39,7 @@ namespace NetCoreExamples
                 Acceleration accData = data.Value<Acceleration>();
                 mergedata.acUpdate(accData);
                 //Console.Clear();
-                Console.WriteLine(mergedata.toString());
+                Console.WriteLine(mergedata.ToString());
             }));
             //Console.WriteLine(array1.ToString());
             //gyro.AngularVelocity.Start();
@@ -115,7 +115,8 @@ namespace NetCoreExamples
             Timestamp = timeref;
         }
 
-        public String toString()
+        override
+        public String ToString()
         {
             return String.Format("Pitch: {0}  Roll: {1}  Yaw: {2}\nLeft/Right: {3}  Forwards/Backwards: {4}  Up/Down: {5}", Xgy, Ygy, Zgy, Xac, Yac, Zac);
         }
