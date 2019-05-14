@@ -3,6 +3,7 @@ using MbientLab.MetaWear.Core;
 using MbientLab.MetaWear.Data;
 using MbientLab.MetaWear.Sensor;
 using MbientLab.MetaWear.Sensor.GyroBmi160;
+using MbientLab.MetaWear.Core.SensorFusionBosch;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -22,48 +23,102 @@ namespace NetCoreExamples
 
             var acc = metawear.GetModule<IAccelerometer>();
             var gyro = metawear.GetModule<IGyroBmi160>();
-
-            acc.Configure(odr: 100f);
-            gyro.Configure(odr: OutputDataRate._100Hz);
-            AngularVelocity array1;
-            float xgy = 0, ygy = 0, zgy = 0;
-            //int i = 1;
-            int j = 1;
-            await gyro.AngularVelocity.AddRouteAsync(source => source.Stream(data => 
+            acc.Configure(odr: 25f);
+            gyro.Configure(odr: OutputDataRate._25Hz);
+            MergedData mergedata = new MergedData();
+            await gyro.AngularVelocity.AddRouteAsync(source => source.Stream(data =>
             {
-                array1 = data.Value<AngularVelocity>();
-                //Console.WriteLine(i++ +": " + array1);
-                xgy += array1.X;
-                ygy += array1.Y;
-                zgy += array1.Z;
+                AngularVelocity gyroData = data.Value<AngularVelocity>();
+                mergedata.gyUpdate(gyroData);
+                //Console.Clear();
+                Console.WriteLine(mergedata.ToString());
             }));
-            Acceleration array2;
-            float xacc = 0, yacc = 0, zacc = 0;
-            await acc.Acceleration.AddRouteAsync(source => source.Stream(data2 =>
+
+            await acc.Acceleration.AddRouteAsync(source => source.Stream(data =>
             {
-                array2 = data2.Value<Acceleration>();
-                xacc = array2.X;
-                yacc = array2.Y;
-                zacc = array2.Z;
-                //Console.WriteLine(j++ + ": " + array2);
+                Acceleration accData = data.Value<Acceleration>();
+                mergedata.acUpdate(accData);
+                //Console.Clear();
+                Console.WriteLine(mergedata.ToString());
             }));
             //Console.WriteLine(array1.ToString());
-            gyro.AngularVelocity.Start();
-            acc.Acceleration.Start();
+            //gyro.AngularVelocity.Start();
+            //acc.Acceleration.Start
             gyro.Start();
             acc.Start();
             //TODO Synchronise gyro and acc to get matching data
-            for (int i = 0; i < 1000; i++)
-            {
-                await Task.Delay(50);
-                Console.WriteLine(String.Format("{0} {1} {2}:{3} {4} {5}", xgy, ygy, zgy, xacc, yacc, zacc));
-                xgy = ygy = zgy = 0;
-            }
+            await Task.Delay(15000);
             gyro.Stop();
             acc.Stop();
+
             Console.WriteLine();
             //Console.WriteLine(x1);
             Console.ReadLine();
+        }
+    }
+
+    public class MergedData
+    {
+        public MergedData ()
+        {
+            Xac = 0f;
+            Yac = 0f;
+            Zac = 0f;
+            Xgy = 0f;
+            Ygy = 0f;
+            Zgy = 0f;
+            PrevAC = null;
+            PrevGY = null;
+            Timestamp = DateTime.Now;
+        }
+        public float Xac { get; set; }
+        public float Yac { get; set; }
+        public float Zac { get; set; }
+        public float Xgy { get; set; }
+        public float Ygy { get; set; }
+        public float Zgy { get; set; }
+        public Acceleration PrevAC { get; set; }
+        public AngularVelocity PrevGY { get; set; }
+        public DateTime Timestamp { get; set; }
+
+        public void gyUpdate(AngularVelocity gyData)
+        {
+            DateTime timeref = DateTime.Now;
+            float timedif = (float)timeref.Subtract(Timestamp).TotalSeconds;
+            Console.WriteLine(timedif);
+            if (PrevAC != null)
+            { 
+                Xac += PrevAC.X * timedif;
+                Yac += PrevAC.Y * timedif;
+                Zac += PrevAC.Z * timedif;
+            }
+            Xgy += gyData.X * timedif;
+            Ygy += gyData.Y * timedif;
+            Zgy += gyData.Z * timedif;
+            Timestamp = timeref;
+        }
+
+        public void acUpdate(Acceleration acData)
+        {
+            DateTime timeref = DateTime.Now;
+            float timedif = (float)timeref.Subtract(Timestamp).TotalSeconds;
+            Console.WriteLine(timedif);
+            if (PrevGY != null)
+            {
+                Xgy += PrevGY.X * timedif;
+                Ygy += PrevGY.Y * timedif;
+                Zgy += PrevGY.Z * timedif;
+            }
+            Xac += acData.X * timedif;
+            Yac += acData.Y * timedif;
+            Zac += acData.Z * timedif;
+            Timestamp = timeref;
+        }
+
+        override
+        public String ToString()
+        {
+            return String.Format("Pitch: {0}  Roll: {1}  Yaw: {2}\nLeft/Right: {3}  Forwards/Backwards: {4}  Up/Down: {5}", Xgy, Ygy, Zgy, Xac, Yac, Zac);
         }
     }
 }
