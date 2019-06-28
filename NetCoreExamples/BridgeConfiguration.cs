@@ -9,7 +9,7 @@ namespace NetCoreExamples
     public class BridgeConfiguration
     {
         //Steps
-        private int tg = 1;
+        private int tg = 10;
         private int ag = 1;
         private int eg = 1;
         private int rg = 1;

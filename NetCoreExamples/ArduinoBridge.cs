@@ -243,6 +243,15 @@ namespace NetCoreExamples
         {
             MoveBackward(1);
         }
+
+        public void Move(int pitch, int roll)
+        {
+            if (!Connected) throw new Exception("Drone powered off.");
+            FB = pitch * config.Eg + config.Init_eg;
+            LR = roll * config.Ag + config.Init_ag;
+            Write();
+        }
+
         /// <summary>
         /// Rotates the drone with the specified speed (amount).
         /// </summary>

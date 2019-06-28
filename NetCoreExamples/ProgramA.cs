@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 namespace NetCoreExamples {
     class ProgramA {
         static void Main(string[] args) {
-            string[] abc = { "NetCoreExamples.OwnDataProcessor", "E3:FF:78:0E:F8:08" };
+            // F5:8B:76:C8:4E:C8
+            // E3:FF:78:0E:F8:08
+            string[] abc = { "NetCoreExamples.OwnDataProcessor", "F5:8B:76:C8:4E:C8" };
             MainAsync(abc).Wait();
         }
 

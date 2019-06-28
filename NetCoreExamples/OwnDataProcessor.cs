@@ -14,6 +14,10 @@ namespace NetCoreExamples
 {
     class OwnDataProcessor
     {
+        static bool cont = true;
+        static int thr = 1000;
+
+        static ArduinoBridge a;
 
         static async Task RunAsync(string[] args)
         {
@@ -28,7 +32,7 @@ namespace NetCoreExamples
             string p = Console.ReadLine();
             int port = 7;
             Int32.TryParse(p, out port);
-            ArduinoBridge a = new ArduinoBridge(port);
+            a = new ArduinoBridge(port);
             Console.WriteLine("Bereit");
 
             acc.Configure(odr: 25f);
@@ -36,71 +40,66 @@ namespace NetCoreExamples
 
 
             Acceleration currAcc, prevAcc;
-            long[] secVals = new long[1000000];
-            double[] xVals = new double[1000000]; double[] yVals = new double[1000000];
-            double[] zVals = new double[1000000];
-            // int i = 0;
-            int z = 0;
-            float xacc = 0, yacc = 0, zacc = 0;
+            double s;
+            double x = 0, y = 0, z = 0;
             double xAccAvg = 0, yAccAvg = 0, zAccAvg = 0;
-
+            double roll = 0, pitch = 0; // Make Angles avaialbe to programm
             await acc.Acceleration.AddRouteAsync(source => source.Stream(data2 =>
             {
                 currAcc = data2.Value<Acceleration>();
-                xacc = currAcc.X * 9.80665f;
-                yacc = currAcc.Y* 9.80665f;
-                zacc = currAcc.Z* 9.80665f;
+                x = currAcc.X * 9.80665f;
+                y = currAcc.Y * 9.80665f;
+                z = currAcc.Z * 9.80665f;
 
-                xVals[z] = xacc;
-                yVals[z] = yacc;
-                zVals[z] = zacc;
 
-                if (z >= 5)
-                {
-                    
-
-                   Console.WriteLine("P: " + (pathX + pathY));
-                   // Console.WriteLine(String.Format("X:{0:0.##} Y:{1:0.##} Z:{2:0.##}", pathX, pathY, pathZ));
-                }
-
-                if (z < 50)
-                {
-                    xAccAvg += xacc;
-                    yAccAvg += yacc;
-                    zAccAvg += zacc;
-                }
-                if (z == 50)
-                {
-                    xAccAvg = xAccAvg / 50.0;
-                    yAccAvg = yAccAvg / 50.0;
-                    zAccAvg = zAccAvg / 50.0;
-
-                }
-                double Ax = (CalcAx(xacc, yacc, zacc) * 180) / Math.PI;
-                double Ay = (CalcAy(xacc, yacc, zacc) * 180) / Math.PI;
-                a.MoveLR(Convert.ToInt32(Ax));
-                a.MoveFB(Convert.ToInt32(-Ay));
-                Console.WriteLine(a.Status);
+                // Angle Calc
+                roll = (CalcTheta(x, y, z) * 180) / Math.PI;
+                pitch = (CalcTheta(y, x, z) * 180) / Math.PI;
                 String direction = "";
-                if (Ax > 0)
+                if (roll > 0)
                     direction = "LEFT";
-                else if (Ax < 0)
+                if (roll < 0)
                     direction = "RIGHT";
-                Console.WriteLine(String.Format("{0:0.#####} {1:0.#####} " + direction, Ay, Math.Abs(Ax)));
+                Console.WriteLine(String.Format("{0:0.#####} {1:0.#####} {2}", pitch, Math.Abs(roll), direction));
 
-                // zacc = (float)(Math.Truncate((double)array2.Z * 10.0) / 10.0);
-                // yacc  = (float)(Math.Truncate((double)array2.Y * 10.0) / 10.0);
-                // xacc = (float)(Math.Truncate((double)array2.X * 10.0) / 10.0);
-                //  Console.WriteLine(j++ + ": " + array2);
+                // Acceleration workings
+
+
+                prevAcc = currAcc;
             }));
             acc.Acceleration.Start();
             acc.Start();
-            z = 0;
-              //TODO Synchronise gyro and acc to get matching data
-            for (int i = 0; i < 10000; i++)
-
+            Task.Run(() => ListenForKeyEvents());
+            
+            while (cont)
             {
+                /*
+                var key = Console.ReadKey();
+                try
+                {
+                    switch (key.Key)
+                    {
+                        case ConsoleKey.C:
+                            cont = false; break;
+                        case ConsoleKey.W: a.IncreasePower(); break;
+                        case ConsoleKey.S: a.DecreasePower(); break;
+                        case ConsoleKey.Q: a.Reset(); break;
+                        case ConsoleKey.Spacebar: a.SetPower(0); break;
+                        default: thr = a.Throttle;break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                */
+                a.Move(Convert.ToInt32(-pitch * 1.5), Convert.ToInt32(-roll * 1.5));
+                Console.WriteLine(Convert.ToInt32(roll) + "x");
+                Console.WriteLine(Convert.ToInt32(-pitch) + "y");
+                Console.WriteLine(a.Status);
                 await Task.Delay(50);
+            }
+                
                 // Console.WriteLine(String.Format("{0} {1} {2}}", xgy, ygy, zgy));
                 //Console.WriteLine(String.Format("{0:0.####}", (0.5*xacc * Math.Pow(0.1, 2)*1000) + (0.5*yacc * Math.Pow(0.1, 2)*1000) + (0.5*zacc * Math.Pow(0.1, 2)*1000)));
 
@@ -120,8 +119,8 @@ namespace NetCoreExamples
                  Console.WriteLine(String.Format("{0:0.#####} {1:0.#####} {2:0.#####}" + direction, Ay, Math.Abs(Ax), Az));*/
                 
                 //####### PATH CALCULATION
-                if (z > 55)
-                {
+                // if (z > 55)
+                // {
                     
 
                     //  Console.WriteLine(String.Format("Vals: {0:0.#####} {1:0.#####} {2:0.#####} {3:0.#####} {4:0.####}", xVals[z - 2], xVals[z - 1], (Math.Abs(secVals[z - 2] - secVals[z-3])) / 1000.0, (Math.Abs(secVals[z-1] - secVals[z - 3])) / 1000.0, z)); 
@@ -129,18 +128,40 @@ namespace NetCoreExamples
 
                     //Console.WriteLine((secVals[z - 1] - secVals[z - 2]) / 1000.0);
                     // (secVals[z] - secVals[z - 1]) / 1000
-                }
+                // }
                 
-            }
+            
             acc.Stop();
-            Console.WriteLine();
             //Console.WriteLine(x1);
-            Console.ReadLine();
         }
 
-        private static double CalcAx(double x, double y, double z)
+        public static async void ListenForKeyEvents()
         {
-            return Math.Atan(x / (Math.Sqrt(Math.Pow(y, 2) + Math.Pow(z, 2))));
+            while (cont) { 
+                var key = Console.ReadKey();
+                try
+                {
+                    switch (key.Key)
+                    {
+                        case ConsoleKey.C:
+                            cont = false; break;
+                        case ConsoleKey.W: a.IncreasePower(); break;
+                        case ConsoleKey.S: a.DecreasePower(); break;
+                        case ConsoleKey.Q: a.Reset(); break;
+                        case ConsoleKey.Spacebar: a.SetPower(0); break;
+                        default: thr = a.Throttle; break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+        }
+
+        private static double CalcTheta(double a, double b, double c)
+        {
+            return Math.Atan(a / (Math.Sqrt(Math.Pow(b, 2) + Math.Pow(c, 2))));
         }
 
         private static double CalcAy(double x, double y, double z)
